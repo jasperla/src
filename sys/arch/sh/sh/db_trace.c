@@ -73,6 +73,13 @@ struct db_variable db_regs[] = {
 
 struct db_variable *db_eregs = db_regs + nitems(db_regs);
 
+const unsigned long *db_reg_args[4] = {
+	(unsigned long *)&ddb_regs.tf_r7,
+	(unsigned long *)&ddb_regs.tf_r6,
+	(unsigned long *)&ddb_regs.tf_r5,
+	(unsigned long *)&ddb_regs.tf_r4,
+};
+
 void
 db_stack_trace_print(db_expr_t addr, int have_addr, db_expr_t count,
     char *modif, int (*print)(const char *, ...))
@@ -111,10 +118,10 @@ db_stack_trace_print(db_expr_t addr, int have_addr, db_expr_t count,
 			if ((tf->tf_ssr & PSL_MD) == 0)
 				break;
 		} else {
-			char *name;
+			char 	*name;
 			db_expr_t offset;
 			Elf_Sym *sym;
-
+			int	 i, narg;
 
 			DPRINTF("    (1)newpc 0x%lx, newfp 0x%lx\n",
 				callpc, frame);
@@ -122,7 +129,24 @@ db_stack_trace_print(db_expr_t addr, int have_addr, db_expr_t count,
 			sym = db_search_symbol(callpc, DB_STGY_ANY, &offset);
 			db_symbol_values(sym, &name, NULL);
 
-			(*print)("%s() at ", name ? name : "");
+			narg = db_ctf_func_numargs(sym);
+			if (narg < 0 || narg > 4)
+				narg = 4;
+
+			if (name == NULL)
+				(*print)("%p(", name);
+			else
+				(*print)("%s(", name);
+
+			(*print)("%d", narg);
+
+			for (i = narg; i > 0; i--) {
+				(*print)("%lx", &db_reg_args[i-1]);
+				if (i > 1)
+					(*print)(",");
+			}
+
+			(*print)(") at ");
 			db_printsym(callpc, DB_STGY_PROC, print);
 			(*print)("\n");
 
