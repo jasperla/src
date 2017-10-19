@@ -141,7 +141,7 @@ db_stack_trace_print(db_expr_t addr, int have_addr, db_expr_t count,
 			(*print)("%d", narg);
 
 			for (i = narg; i > 0; i--) {
-				(*print)("%lx", &db_reg_args[i-1]);
+				(*print)("%lx", *db_reg_args[i-1]);
 				if (i > 1)
 					(*print)(",");
 			}
